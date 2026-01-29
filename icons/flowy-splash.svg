@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 2400" width="1200" height="2400">
+  <rect width="1200" height="2400" rx="120" fill="#F4F4F1" />
+  <g transform="translate(120 400)">
+    <rect width="960" height="960" rx="220" fill="#FF5C00" />
+    <g transform="translate(120 160)" fill="#fff">
+      <path d="M120 64c60-60 220-80 360 40s60 360-60 440-260 20-320-60c-60-80-40-180 20-260z" opacity="0.98" />
+      <circle cx="372" cy="212" r="28" opacity="0.98" />
+    </g>
+  </g>
+  <text x="600" y="1700" font-family="Inter, ui-sans-serif, system-ui" font-size="64" fill="#1A1A1A" text-anchor="middle">Flow RSVP</text>
+  <text x="600" y="1790" font-family="JetBrains Mono, ui-monospace" font-size="24" fill="#6B6B6B" text-anchor="middle">A mindful speed‑reading sanctuary</text>
+</svg>

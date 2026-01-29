@@ -1,0 +1,1 @@
+self.addEventListener("message",async r=>{const{id:s,file:e,meta:t}=r.data;try{const a=await e.arrayBuffer();self.postMessage({id:s,ok:!0,arrayBuffer:a,fileName:e.name,fileType:e.type,meta:t})}catch(a){self.postMessage({id:s,ok:!1,error:String(a)})}});
