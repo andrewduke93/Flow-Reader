@@ -13,14 +13,14 @@ export default defineConfig({
         name: 'Flow RSVP',
         short_name: 'Flow',
         description: 'A mindful speed-reading sanctuary — Flow RSVP',
-        start_url: '/',
+        start_url: '/Flow-Reader/',
         display: 'standalone',
         orientation: 'portrait',
         theme_color: '#F4F4F1',
         background_color: '#F4F4F1',
         icons: [
-          { src: '/icons/flowy-icon.svg', sizes: '192x192', type: 'image/svg+xml', purpose: 'any maskable' },
-          { src: '/icons/flowy-icon.svg', sizes: '512x512', type: 'image/svg+xml', purpose: 'any maskable' }
+          { src: '/Flow-Reader/icons/flowy-icon.svg', sizes: '192x192', type: 'image/svg+xml', purpose: 'any maskable' },
+          { src: '/Flow-Reader/icons/flowy-icon.svg', sizes: '512x512', type: 'image/svg+xml', purpose: 'any maskable' }
         ]
       },
       workbox: {
