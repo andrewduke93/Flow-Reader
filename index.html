@@ -17,9 +17,19 @@
     <link rel="apple-touch-startup-image" href="/icons/apple-splash-1536-2048.png" media="(device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2)" />
 
     <title>Flow RSVP — Design System</title>
+  <meta name="apple-mobile-web-app-title" content="Flow" />
   </head>
   <body>
+    <!-- Safety-Orange splash fallback for platforms that show initial paint -->
+    <div id="splash-fallback" style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#FF5C00;z-index:9999;">
+      <img src="/icons/flowy-icon.svg" alt="Flowy" style="width:120px;height:120px;border-radius:28px;" />
+    </div>
+
     <div id="root"></div>
+    <script>
+      // remove splash fallback once JS loads (keeps launch pleasing on slow networks)
+      try { window.addEventListener('load', () => { const s = document.getElementById('splash-fallback'); if (s && s.parentNode) s.parentNode.removeChild(s) }) } catch (err) {}
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

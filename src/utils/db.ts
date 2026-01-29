@@ -8,6 +8,7 @@ export interface Progress {
 
 export interface BookRecord {
   id?: number
+  externalId?: string
   title: string
   author?: string
   coverColor?: string
@@ -16,6 +17,8 @@ export interface BookRecord {
   fileName?: string
   fileType?: string
   category?: string
+  thumbnail?: string | null
+  tokens?: unknown[]
   addedAt: number
   progress?: Progress
 }
@@ -26,7 +29,7 @@ export class FlowDB extends Dexie {
   constructor() {
     super('flow_rsvp_db')
     this.version(1).stores({
-      books: '++id, title, author, category, addedAt, "progress.lastRead"'
+      books: '++id, title, author, externalId, category, addedAt, "progress.lastRead"'
     })
   }
 }

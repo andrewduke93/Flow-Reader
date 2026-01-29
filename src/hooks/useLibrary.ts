@@ -11,12 +11,27 @@ export default function useLibrary(){
   const tasks = useRef<Map<string, IngestTask>>(new Map())
 
   useEffect(() => {
+    // fast-start: read lightweight snapshot from localStorage for instant paint (cold-start optimization)
+    try {
+      const snap = localStorage.getItem('flowy:booksSnapshot')
+      if (snap) {
+        const parsed = JSON.parse(snap) as BookRecord[]
+        setBooks(parsed)
+        setRecent(parsed.slice(0,3))
+      }
+    } catch (err) {}
+
     let mounted = true
     setLoading(true)
     db.books.orderBy('addedAt').reverse().toArray().then(all => {
       if (!mounted) return
       setBooks(all)
       setRecent(all.slice(0, 3))
+      // persist lightweight snapshot for future cold starts (synchronous write)
+      try {
+        const snap = all.map(b => ({ id: b.id, title: b.title, coverDataUrl: b.coverDataUrl, progress: b.progress }))
+        localStorage.setItem('flowy:booksSnapshot', JSON.stringify(snap))
+      } catch (err) {}
       setLoading(false)
     })
     return () => { mounted = false }
@@ -45,6 +60,7 @@ export default function useLibrary(){
           const coverColor = data.coverColor ?? ('#' + (String(data.fileName || '').split('').reduce((s, c) => s + c.charCodeAt(0), 0) & 0xffffff).toString(16).padStart(6, '0'))
           const rec: BookRecord = {
             title: data.meta?.title ?? data.fileName ?? 'Untitled',
+            externalId: data.meta?.externalId ?? undefined,
             author: data.meta?.author ?? 'Unknown',
             coverColor: coverColor,
             coverDataUrl: data.meta?.coverDataUrl ?? null,
@@ -59,6 +75,8 @@ export default function useLibrary(){
           const all = await db.books.orderBy('addedAt').reverse().toArray()
           setBooks(all)
           setRecent(all.slice(0,3))
+          // update snapshot synchronously for fast cold-start
+          try { localStorage.setItem('flowy:booksSnapshot', JSON.stringify(all.map(b => ({ id: b.id, title: b.title, coverDataUrl: b.coverDataUrl, progress: b.progress })))) } catch (err) {}
           task.status = 'done'
           tasks.current.set(data.id, task)
         })()
@@ -67,7 +85,30 @@ export default function useLibrary(){
     return workerRef.current
   }, [])
 
-  const addBook = useCallback(async (file: File, meta?: Partial<BookRecord>) => {
+  const addBook = useCallback(async (file: File, meta?: Partial<BookRecord>, processed?: { tokens?: any[]; thumbnail?: string | null }) => {
+    // If processed data is provided, prefer storing it immediately; otherwise fall back to worker ingestion
+    if (processed) {
+      const rec: BookRecord = {
+        title: meta?.title ?? file.name,
+        externalId: meta?.externalId ?? undefined,
+        author: meta?.author ?? 'Unknown',
+        coverColor: meta?.coverColor ?? '#FFFFFF',
+        coverDataUrl: processed.thumbnail ?? meta?.coverDataUrl ?? null,
+        fileBlob: file,
+        fileName: file.name,
+        fileType: file.type,
+        category: meta?.category ?? 'Library',
+        tokens: processed.tokens ?? undefined,
+        addedAt: Date.now(),
+        progress: { wordIndex: 0, percentage: 0, lastRead: Date.now() }
+      }
+      const id = await db.books.add(rec)
+      const all = await db.books.orderBy('addedAt').reverse().toArray()
+      setBooks(all)
+      setRecent(all.slice(0,3))
+      return id
+    }
+
     const id = String(Math.random()).slice(2)
     tasks.current.set(id, { id, status: 'pending' })
     const w = getWorker()

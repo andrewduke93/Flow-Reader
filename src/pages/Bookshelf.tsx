@@ -1,15 +1,37 @@
 import React from 'react'
 import useLibrary from '../hooks/useLibrary'
 import BookCard from '../components/BookCard'
+import useFileProcessor from '../hooks/useFileProcessor'
 
 export default function Bookshelf(){
   const { books, recent, addBook, deleteBook, updateProgress, importFromUrl, loading } = useLibrary()
   const fileRef = React.useRef<HTMLInputElement | null>(null)
+  const dropZoneRef = React.useRef<HTMLDivElement | null>(null)
 
+  const fileProcessor = useFileProcessor()
+  const [parsingProgress, setParsingProgress] = React.useState(0)
   const onFile = async (f?: FileList | null) => {
     const file = f?.[0]
     if (!file) return
-    await addBook(file)
+    // immediate UI feedback (synchronous) to meet 16ms frame requirement
+    if (dropZoneRef.current) {
+      dropZoneRef.current.classList.add('drop-loading')
+      dropZoneRef.current.setAttribute('aria-busy', 'true')
+    }
+    try {
+      const res = await fileProcessor.processFile(file, { maxTokens: 20000, onProgress: (p: number) => setParsingProgress(p) })
+      setParsingProgress(0)
+      await addBook(file, { title: res.metadata?.title ?? file.name, author: res.metadata?.author }, { tokens: res.tokens, thumbnail: res.thumbnail ?? null })
+    } catch (err) {
+      console.error(err)
+      alert('Failed to process file')
+      setParsingProgress(0)
+    } finally {
+      if (dropZoneRef.current) {
+        dropZoneRef.current.classList.remove('drop-loading')
+        dropZoneRef.current.removeAttribute('aria-busy')
+      }
+    }
   }
 
   return (
@@ -21,7 +43,7 @@ export default function Bookshelf(){
         </div>
 
         <div className="flex items-center gap-3">
-          <input ref={fileRef} type="file" accept="application/pdf,application/epub+zip" className="hidden" onChange={(e) => onFile(e.target.files)} />
+          <input ref={fileRef} type="file" accept="application/pdf,application/epub+zip,text/*" className="hidden" onChange={(e) => { if (dropZoneRef.current) { dropZoneRef.current.classList.add('drop-loading'); dropZoneRef.current.setAttribute('aria-busy','true') } onFile(e.target.files) }} />
           <button onClick={() => fileRef.current?.click()} className="rounded-squircle-md border-2 border-ink px-3 py-2 bg-white shadow-hard-stop">+ Add book</button>
           <button onClick={() => importFromUrl('https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf', { title: 'Dummy PDF' })} className="rounded-squircle-md border-2 border-ink px-3 py-2 bg-white">Import demo</button>
         </div>
@@ -39,9 +61,29 @@ export default function Bookshelf(){
               <BookCard id={b.id} title={b.title} author={b.author} coverColor={b.coverColor} coverDataUrl={b.coverDataUrl || null} percentage={b.progress?.percentage ?? 0} onOpen={() => console.log('open', b.id)} onRSVP={() => console.log('rsvp', b.id)} onDelete={() => deleteBook(b.id!)} />
             </div>
           ))}
+
+          {/* Drop zone (empty state inline) */}
+          <div className="min-w-[160px] max-w-[220px]">
+            <div
+              ref={(el) => dropZoneRef.current = el}
+              onDragEnter={(e) => { e.preventDefault(); /* immediate visual feedback within a frame */ if (dropZoneRef.current) dropZoneRef.current.classList.add('drop-loading'); dropZoneRef.current?.setAttribute('aria-busy','true') }}
+              onDragOver={(e) => e.preventDefault()}
+              onDragLeave={(e) => { e.preventDefault(); if (dropZoneRef.current) dropZoneRef.current.classList.remove('drop-loading'); dropZoneRef.current?.removeAttribute('aria-busy') }}
+              onDrop={(e) => { e.preventDefault(); if (dropZoneRef.current) dropZoneRef.current.classList.remove('drop-loading'); dropZoneRef.current?.removeAttribute('aria-busy'); onFile(e.dataTransfer?.files) }}
+              className="h-40 rounded-3xl border-2 border-dashed border-ink/40 bg-white/60 flex flex-col items-center justify-center gap-3 p-4 drop-zone"
+              role="button"
+              tabIndex={0}
+            >
+              <div className="text-3xl">⬇️</div>
+              <div className="text-sm text-ink/60">Drop a PDF or EPUB to add</div>
+              <div className="text-xs text-ink/40 mt-2">Flowy will strip the noise — parsing in background</div>
+              <div className="w-full mt-2 h-2 bg-ink/6 rounded">
+                <div className="h-2 bg-safety rounded" style={{ width: `${parsingProgress}%`, transition: 'width 160ms cubic-bezier(.2,.9,.2,1)' }} />
+              </div>
+            </div>
+          </div>
         </div>
       </div>
-
       {/* Grid */}
       {books.length === 0 ? (
         <div className="w-full h-[48vh] grid place-items-center">

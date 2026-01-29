@@ -14,8 +14,8 @@ export default function FlowButton({ className, variant = 'primary', tone = 'def
 
   return (
     <motion.button
-      whileTap={{ x: 2, y: 2 }}
-      transition={{ type: 'spring', stiffness: 700, damping: 30 }}
+      whileTap={{ scale: 0.98 }}
+      transition={{ type: 'spring', stiffness: 1000, damping: 50 }}
       className={twMerge(`${base} ${toneCls} ${variantCls} rounded-squircle-md px-3 py-1`, className)}
       {...(rest as any)}
       aria-pressed={rest['aria-pressed']}

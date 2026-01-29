@@ -19,9 +19,10 @@ export default function BookCard({ id, title, author, coverColor = '#F4F4F1', co
   return (
     <motion.article
       layout
-      whileHover={{ y: -6, scale: 1.01 }}
-      whileTap={{ scale: 0.995, y: 0 }}
-      className="relative bg-white border-2 border-ink rounded-3xl overflow-hidden shadow-hard-stop p-3 flex flex-col items-start gap-3"
+      transition={{ type: 'spring', stiffness: 1000, damping: 50 }}
+      whileHover={{ y: -8, scale: 1.02, transition: { type: 'spring', stiffness: 1000, damping: 50 } }}
+      whileTap={{ scale: 0.98, transition: { type: 'spring', stiffness: 1000, damping: 50 } }}
+      className="relative bg-white border-2 border-ink rounded-3xl overflow-hidden shadow-hard-stop p-3 flex flex-col items-start gap-3 allow-rubber"
       style={{ width: 220, aspectRatio: '3/4' }}
     >
       <div className="w-full h-40 rounded-2xl flex items-center justify-center" style={{ background: coverDataUrl ? `url(${coverDataUrl}) center/cover` : coverColor }}>
@@ -59,8 +60,7 @@ export default function BookCard({ id, title, author, coverColor = '#F4F4F1', co
       {/* context actions (visible on long-press / right click in real app) */}
       <div className="absolute top-3 right-3 flex gap-2 opacity-0 motion-safe:group-hover:opacity-100">
         <button onClick={() => onRSVP?.(id)} className="w-8 h-8 rounded-squircle-md border-2 border-ink bg-white flex items-center justify-center">⚡</button>
-        <button onClick={() => onOpen?.(id)} className="w-8 h-8 rounded-squircle-md border-2 border-ink bg-white flex items-center justify-center">📖</button>
-        <button onClick={() => onDelete?.(id)} className="w-8 h-8 rounded-squircle-md border-2 border-ink bg-white flex items-center justify-center">🗑️</button>
+        <button onClick={() => onOpen?.(id)} className="w-8 h-8 rounded-squircle-md border-2 border-ink bg-white flex items-center justify-center">📖</button>        <button onClick={() => navigator.clipboard?.writeText(`${location.origin}${location.pathname}?book=${id}&i=${Math.max(0, (Math.round((percentage/100)*1000) || 0))}`)} className="w-8 h-8 rounded-squircle-md border-2 border-ink bg-white flex items-center justify-center">🔗</button>        <button onClick={() => onDelete?.(id)} className="w-8 h-8 rounded-squircle-md border-2 border-ink bg-white flex items-center justify-center">🗑️</button>
       </div>
     </motion.article>
   )

@@ -133,13 +133,25 @@ export default function useRSVP(text: string, opts?: { initialWpm?: number; natu
         elapsedRef.current = 0
         // advance word
         if (indexRef.current >= words.length - 1) {
+          // finished
           setIsPlaying(false)
           isPlayingRef.current = false
+          try { window.dispatchEvent(new CustomEvent('rsvp:finished', { detail: { wordsRead: indexRef.current } })) } catch (err) {}
           return
         }
         setPreviousWordIndex(indexRef.current)
         indexRef.current = Math.min(indexRef.current + 1, words.length - 1)
         setCurrentWordIndex(indexRef.current)
+
+        // dispatch cumulative read event (used for install prompt & analytics)
+        try {
+          const ev = new CustomEvent('rsvp:wordsRead', { detail: { wordsRead: indexRef.current } })
+          window.dispatchEvent(ev)
+          // persist a running count (best-effort)
+          const prev = Number(localStorage.getItem('flowy:wordsRead') || '0')
+          localStorage.setItem('flowy:wordsRead', String(Math.max(prev, indexRef.current)))
+        } catch (err) {}
+
         // recompute next target immediately
         currentDelayRef.current = computeDelayForIndex(indexRef.current)
       }
@@ -162,12 +174,22 @@ export default function useRSVP(text: string, opts?: { initialWpm?: number; natu
   }, [isPlaying, computeDelayForIndex, words.length])
 
   useEffect(() => {
+    // ensure currentDelayRef reflects the current index on relevant changes
+    currentDelayRef.current = computeDelayForIndex(currentWordIndex)
     // reset when text changes
     setCurrentWordIndex(0)
     setPreviousWordIndex(null)
     setIsPlaying(false)
     indexRef.current = 0
   }, [text])
+
+  // expose a derived `currentDelayMs` for UI sync (pulses, underlines, animations)
+  const [currentDelayMs, setCurrentDelayMs] = useState(() => computeDelayForIndex(0))
+  useEffect(() => {
+    const d = computeDelayForIndex(currentWordIndex)
+    currentDelayRef.current = d
+    setCurrentDelayMs(d)
+  }, [currentWordIndex, computeDelayForIndex, wpm, words.length])
 
   const play = useCallback(() => setIsPlaying(true), [])
   const pause = useCallback(() => setIsPlaying(false), [])
@@ -192,11 +214,12 @@ export default function useRSVP(text: string, opts?: { initialWpm?: number; natu
     previousWordIndex,
     isPlaying,
     wpm,
+    currentDelayMs,
     play,
     pause,
     toggle,
     setWpm,
     seek,
     reset
-  } as RSVPState & { words: string[] }
+  } as RSVPState & { words: string[] } & { currentDelayMs: number }
 }

@@ -11,7 +11,7 @@ type Props = {
   wpm?: number
 }
 
-export default function RSVPDisplay({ words, index, pivotPercent = 0.35, className, isPlaying = false, wpm = 300 }: Props){
+export default function RSVPDisplay({ words, index, pivotPercent = 0.35, className, isPlaying = false, wpm = 300, sharedLayoutId }: Props & { sharedLayoutId?: string }){
   const containerRef = React.useRef<HTMLDivElement | null>(null)
   const wordRef = React.useRef<HTMLDivElement | null>(null)
   const focusCharRef = React.useRef<HTMLSpanElement | null>(null)
@@ -20,8 +20,22 @@ export default function RSVPDisplay({ words, index, pivotPercent = 0.35, classNa
   const prevWordRef = React.useRef<string | null>(null)
   const [prevWord, setPrevWord] = React.useState<string | null>(null)
   const [prevX, setPrevX] = React.useState(0)
+  const [useCanvas, setUseCanvas] = React.useState(true)
 
   const reduceMotion = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
+  // lazily load canvas renderer via React.lazy so bundlers can code-split
+  const RSVPCanvas = React.useMemo(() => React.lazy(() => import('./RSVPCanvas')), [])
+  const prefersCanvas = true
+  const canUseCanvas = typeof window !== 'undefined' && (!!(window as any).OffscreenCanvas || typeof document !== 'undefined')
+  if (prefersCanvas && canUseCanvas && !reduceMotion) {
+    const Canvas = RSVPCanvas as any
+    return (
+      <React.Suspense fallback={null}>
+        <Canvas words={words} index={index} pivotPercent={pivotPercent} isPlaying={isPlaying} wpm={wpm} className={className} />
+      </React.Suspense>
+    )
+  }
 
   const word = words[index] ?? ''
   const orp = React.useMemo(() => orpIndexForWordLength(word.length), [word])
@@ -96,6 +110,7 @@ export default function RSVPDisplay({ words, index, pivotPercent = 0.35, classNa
         <motion.div
           ref={wordRef}
           className="rsvp-word text-4xl font-rsvp text-ink"
+          layoutId={sharedLayoutId ?? undefined}
           animate={{ x: translateX }}
           transition={springTransition}
           aria-live="off"
