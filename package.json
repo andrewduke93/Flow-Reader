@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview --port 5173",
+    "smoke:dist": "node ./scripts/check-dist.cjs",
     "generate:assets": "node ./tools/generate-icons.js"
   },
   "dependencies": {
