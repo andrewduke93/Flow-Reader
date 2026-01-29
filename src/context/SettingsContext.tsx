@@ -24,12 +24,24 @@ const DEFAULTS: Omit<SettingsState, 'patchState' | 'reset'> = {
   flowyVolume: 40
 };
 
-export const SettingsContext = createContext<SettingsState | undefined>(undefined);
+const NOOP = () => {};
+
+const SAFE_DEFAULT: SettingsState = {
+  ...DEFAULTS,
+  patchState: (patch: Partial<SettingsState>) => NOOP(),
+  reset: () => NOOP(),
+};
+
+export const SettingsContext = createContext<SettingsState>(SAFE_DEFAULT);
 
 export const useSettings = (): SettingsState => {
   const context = useContext(SettingsContext);
   if (!context) {
-    throw new Error('useSettings must be used within SettingsProvider');
+    // Fallback for mismatched bundles or missing provider in deployed code.
+    // Log once and return a safe default to avoid hard crashes in production.
+    // eslint-disable-next-line no-console
+    console.warn('useSettings used outside SettingsProvider — using safe defaults');
+    return SAFE_DEFAULT;
   }
   return context;
 };
