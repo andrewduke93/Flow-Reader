@@ -1,4 +1,4 @@
-import React, { useState, useCallback, createContext, ReactNode } from 'react';
+import React, { useContext, useState, useCallback, createContext, ReactNode } from 'react';
 
 interface SettingsState {
   wpm: number
@@ -25,6 +25,14 @@ const DEFAULTS: Omit<SettingsState, 'patchState' | 'reset'> = {
 };
 
 export const SettingsContext = createContext<SettingsState | undefined>(undefined);
+
+export const useSettings = (): SettingsState => {
+  const context = useContext(SettingsContext);
+  if (!context) {
+    throw new Error('useSettings must be used within SettingsProvider');
+  }
+  return context;
+};
 
 export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [state, setState] = useState(DEFAULTS);
