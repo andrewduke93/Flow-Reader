@@ -29,7 +29,9 @@ jobs:
       - name: Build
         run: npm run build --if-present
 
-      - name: Deploy to GitHub Pages (gh-pages branch)
+      - name: Deploy to GitHub Pages (attempt with GITHUB_TOKEN)
+        id: deploy_with_token
+        continue-on-error: true
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
@@ -37,3 +39,21 @@ jobs:
           publish_branch: gh-pages
           # keep history small
           keep_files: false
+
+      - name: Fallback — deploy using Personal Access Token (PAGES_PAT)
+        if: steps.deploy_with_token.outcome == 'failure' && secrets.PAGES_PAT != ''
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.PAGES_PAT }}
+          publish_dir: ./dist
+          publish_branch: gh-pages
+          keep_files: false
+
+      - name: Deploy failed — no PAT configured
+        if: steps.deploy_with_token.outcome == 'failure' && secrets.PAGES_PAT == ''
+        run: |
+          echo "\nERROR: Automatic Pages deploy failed when pushing gh-pages with GITHUB_TOKEN." >&2
+          echo "The workflow will attempt a PAT fallback but no 'PAGES_PAT' secret is configured." >&2
+          echo "Create a Personal Access Token (repo scope) and add it as the repository secret 'PAGES_PAT' to enable automatic deploys." >&2
+          echo "Alternatively you can publish manually with: npm run build && npx gh-pages -d dist" >&2
+          exit 1
