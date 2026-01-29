@@ -1,14 +1,23 @@
 import React from 'react'
 import SettingsCard from '../components/SettingsCard'
 import { Cpu, Image, Target, Zap, Music } from 'lucide-react'
-import { useSettings } from '../context/SettingsContext'
+import { useSettings, SAFE_DEFAULT } from '../context/SettingsContext'
 import useRSVP from '../hooks/useRSVP'
 import RSVPDisplay from '../components/RSVPDisplay'
 
 const SAMPLE = 'Flow RSVP makes reading rhythmic, meditative, and fast — try the slider.'
 
 export default function BentoSettings(){
-  const s = useSettings()
+  let s;
+  try {
+    s = useSettings();
+  } catch (err) {
+    // If useSettings throws because the provider is missing (mismatched bundle),
+    // fall back to safe defaults so the UI can render instead of crashing.
+    // eslint-disable-next-line no-console
+    console.warn('useSettings unavailable, falling back to SAFE_DEFAULT', err);
+    s = SAFE_DEFAULT;
+  }
   const rsvp = useRSVP(SAMPLE, { initialWpm: s.wpm })
   React.useEffect(() => { rsvp.setWpm(s.wpm) }, [s.wpm])
   React.useEffect(() => { /* pivot handled in preview prop */ }, [s.pivotPercent])

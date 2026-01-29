@@ -26,7 +26,7 @@ const DEFAULTS: Omit<SettingsState, 'patchState' | 'reset'> = {
 
 const NOOP = () => {};
 
-const SAFE_DEFAULT: SettingsState = {
+export const SAFE_DEFAULT: SettingsState = {
   ...DEFAULTS,
   patchState: (patch: Partial<SettingsState>) => NOOP(),
   reset: () => NOOP(),
