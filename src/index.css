@@ -1,0 +1,70 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root{
+  --color-paper: #F4F4F1;
+  --color-ink: #1A1A1A;
+  --color-safety: #FF5C00;
+  --color-mint: #B3E5E1;
+  --baseline: 8px;
+}
+
+/* global page frame */
+html,body,#root{height:100%}
+body{
+  background:var(--color-paper);
+  color:var(--color-ink);
+  font-family: theme('fontFamily.ui');
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+  line-height:1.4;
+  -webkit-text-size-adjust:100%;
+}
+
+/* RSVP-specific tokens */
+.rsvp-display{
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0;
+  font-feature-settings: 'liga' 0;
+  -webkit-font-smoothing:antialiased;
+  position: relative;
+  overflow: hidden;
+}
+.rsvp-viewport{position:relative;display:block;width:100%;height:84px;display:flex;align-items:center;justify-content:center}
+.rsvp-word{display:inline-flex;white-space:nowrap;will-change:transform;transform:translateX(0);transition:none}
+.rsvp-word *{transition: none !important}
+.rsvp-pivot-line{position:absolute;top:50%;transform:translateY(-50%);width:2px;background:rgba(26,26,26,0.12);height:28px;border-radius:4px;pointer-events:none}
+.rsvp-pivot-line.bottom{top:auto;bottom:50%;transform:translateY(50%)}
+.rsvp-orp{color:var(--color-safety);font-weight:600}
+
+/* Ghost trail for retinal persistence */
+.rsvp-ghost{position:absolute;left:0;top:50%;transform-origin:left center;transform:translateY(-50%);color:var(--color-ink);opacity:0.05;pointer-events:none;filter:opacity(0.05);mix-blend-mode:normal;white-space:nowrap;animation:ghostFade 20ms linear forwards}
+@keyframes ghostFade{from{opacity:0.05}to{opacity:0}}
+
+/* ORP hyper-flow glow when WPM > 500 */
+.rsvp-orp--hyper{animation:orpGlow 900ms infinite linear; filter:drop-shadow(0 0 6px rgba(255,92,0,0.18))}
+@keyframes orpGlow{0%{text-shadow:0 0 0 rgba(255,92,0,0)}50%{text-shadow:0 0 6px rgba(255,92,0,0.28)}100%{text-shadow:0 0 0 rgba(255,92,0,0)}}
+
+/* Thought bubble (empty/paused cadence) */
+.rsvp-thought{position:absolute;left:35%;top:22%;transform:translateX(-50%);opacity:0.9;color:rgba(26,26,26,0.6);display:flex;align-items:center;justify-content:center;width:48px;height:36px;border-radius:18px;background:rgba(255,255,255,0.6);border:2px solid rgba(26,26,26,0.06);box-shadow:0 2px 0 rgba(0,0,0,0.04)}
+
+/* reduced motion fallback */
+.reduced-motion .rsvp-ghost{animation:none;opacity:0}
+.reduced-motion .rsvp-word{transition:none !important}
+.reduced-motion .rsvp-orp--hyper{animation:none;filter:none}
+
+
+/* visible 8px baseline overlay (utility for the design system only) */
+.grid-overlay{
+  pointer-events:none;
+  background-image: linear-gradient(rgba(26,26,26,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(26,26,26,0.02) 1px, transparent 1px);
+  background-size: var(--baseline) var(--baseline), var(--baseline) var(--baseline);
+}
+
+/* small accessibility token */
+.reduced-motion *{
+  transition: none !important;
+  animation: none !important;
+}
