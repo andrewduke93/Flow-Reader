@@ -17,6 +17,15 @@ root.render(
   </React.StrictMode>
 );
 
+// Signal that the app has been mounted and remove the splash fallback.
+setTimeout(() => {
+  try {
+    (window as any).__FLOW_APP_READY = true;
+    const s = document.getElementById('splash-fallback');
+    if (s && s.parentNode) s.parentNode.removeChild(s);
+  } catch (e) {}
+}, 50);
+
 declare global {
   interface ImportMetaEnv {
     readonly VITE_BASE_URL: string;
