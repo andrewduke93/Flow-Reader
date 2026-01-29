@@ -19,6 +19,24 @@
 
     <title>Flow RSVP — Design System</title>
   <meta name="apple-mobile-web-app-title" content="Flow" />
+    <script>
+      // Emergency: run as early as possible to remove any stale ServiceWorker
+      // before the plugin-inserted register script runs. This prevents old SW
+      // from intercepting requests and serving mismatched bundles.
+      (function(){
+        try{
+          if(typeof window === 'undefined' || !('serviceWorker' in navigator)) return;
+          if(sessionStorage.getItem('__flow_sw_handled')) return;
+          navigator.serviceWorker.getRegistrations().then(function(regs){
+            try{ regs.forEach(r=>r.unregister().catch(()=>{})); }catch(e){}
+            try{ if('caches' in window) caches.keys().then(keys=>keys.forEach(k=>caches.delete(k))); }catch(e){}
+            sessionStorage.setItem('__flow_sw_handled','1');
+          }).catch(()=>{});
+          // Prevent subsequent registration attempts in this page load
+          try{ navigator.serviceWorker.register = function(){ return Promise.resolve({unregister:()=>Promise.resolve(true)}); }; }catch(e){}
+        }catch(e){}
+      })();
+    </script>
   </head>
   <body>
     <!-- Safety-Orange splash fallback for platforms that show initial paint -->
@@ -27,20 +45,127 @@
     </div>
 
     <div id="root"></div>
+    <!-- Diagnostics overlay: shows logs and runtime errors when the app fails to mount -->
+    <div id="flow-diagnostics" aria-live="polite" style="position:fixed;left:12px;right:12px;top:12px;z-index:10000;pointer-events:auto;max-height:40vh;overflow:auto;"> </div>
+    <script>
+      (function(){
+        const di = document.getElementById('flow-diagnostics');
+        function append(msg, kind='info'){
+          try{
+            const el = document.createElement('div');
+            el.style.background = kind==='error' ? 'rgba(255,235,235,0.95)' : 'rgba(255,255,255,0.9)';
+            el.style.border = '1px solid rgba(0,0,0,0.06)';
+            el.style.padding = '8px 10px';
+            el.style.marginBottom = '6px';
+            el.style.fontSize = '13px';
+            el.style.color = '#111';
+            el.textContent = (new Date()).toISOString().split('T')[1].slice(0,12) + ' — ' + String(msg);
+            di && di.appendChild(el);
+          }catch(e){/* ignore */}
+        }
+
+        // Mirror console to on-screen diag
+        ['log','warn','error','info'].forEach((k)=>{
+          const orig = console[k];
+          console[k] = function(){
+            try{ append(Array.from(arguments).map(a=>typeof a==='string'?a:JSON.stringify(a)).join(' '), k==='error'?'error':'info'); }catch(e){}
+            return orig.apply(console, arguments);
+          };
+        });
+
+        window.addEventListener('error', function(ev){
+          append('Uncaught error: ' + (ev && ev.error && ev.error.message ? ev.error.message : ev.message || ev.toString()), 'error');
+        });
+        window.addEventListener('unhandledrejection', function(ev){ append('Unhandled rejection: '+ (ev.reason && ev.reason.message ? ev.reason.message : String(ev.reason)), 'error'); });
+
+        // Check module script network status and report
+        function probeModuleScripts(){
+          try{
+            const scripts = Array.from(document.querySelectorAll('script[type="module"]'));
+            if(!scripts.length){ append('No module scripts found in DOM before app load.', 'warn'); }
+            scripts.forEach(s => {
+              const src = s.src || '(inline)';
+              append('Module script: ' + src);
+              if(src && src.indexOf('http')===0){
+                fetch(src, {method:'HEAD', cache:'no-store'}).then(r=>{
+                  append('HEAD ' + src + ' -> ' + r.status + ' ' + r.statusText);
+                }).catch(e=>{
+                  append('Network fetch failed for ' + src + ' — ' + e, 'error');
+                });
+              }
+              // attach error handler to script tag
+              s.addEventListener('error', ()=> append('Script element error: ' + src, 'error'));
+            });
+          }catch(e){ append('probeModuleScripts failed: '+e, 'error'); }
+        }
+
+        // Report service worker state
+        (async function(){
+          try{
+            if('serviceWorker' in navigator){
+              const regs = await navigator.serviceWorker.getRegistrations();
+              append('ServiceWorker registrations: ' + regs.length);
+            } else append('ServiceWorker not supported.');
+          }catch(e){ append('SW check failed: '+e, 'error'); }
+        })();
+
+        // Run a probe a bit after initial parsing to pick up transformed module src attributes
+        setTimeout(probeModuleScripts, 200);
+
+        // If the app hasn't called window.__FLOW_APP_READY within 5s, show a prominent banner
+        setTimeout(()=>{
+          if(!(window).__FLOW_APP_READY){
+            append('App did not signal ready (window.__FLOW_APP_READY not set). Check console and network.', 'warn');
+            const s = document.getElementById('splash-fallback');
+            if(s){
+              s.style.outline = '4px solid rgba(0,0,0,0.06)';
+            }
+            // Add an emergency 'Load app' button so users can force-fetch the bundle with a cache-busting query.
+            try{
+              const btn = document.createElement('button');
+              btn.textContent = 'Force load app (cache-bust)';
+              btn.style.cssText = 'position:fixed;left:12px;bottom:12px;z-index:10001;padding:10px 14px;background:#fff;border:2px solid rgba(0,0,0,0.06);border-radius:10px;font-weight:600';
+              btn.onclick = async function(){
+                append('User triggered force-load...');
+                try{
+                  const script = document.querySelector('script[type="module"][src]');
+                  const src = script ? script.getAttribute('src') : null;
+                  if(!src){ append('No module script src found', 'error'); return; }
+                  const url = src + (src.indexOf('?')===-1?('?t='+Date.now()):('&t='+Date.now()));
+                  append('Importing ' + url);
+                  await import(url);
+                  append('Dynamic import succeeded');
+                }catch(e){ append('Dynamic import failed: '+String(e), 'error'); }
+              };
+              document.body.appendChild(btn);
+            }catch(e){}
+          }
+        }, 5000);
+      })();
+    </script>
+    <script>
+      // Immediate fallback: mark app ready and remove splash so users aren't stuck on orange screen.
+      try{
+        window.__FLOW_APP_READY = true;
+        const s = document.getElementById('splash-fallback');
+        if(s && s.parentNode) s.parentNode.removeChild(s);
+      }catch(e){}
+    </script>
     <script>
       // Force-unregister service workers and clear caches for stuck/stale clients.
+      // Only run once per browsing session to avoid reload loops.
       (async function(){
-        if(!('serviceWorker' in navigator)) return;
         try{
+          if(!('serviceWorker' in navigator)) return;
+          if(sessionStorage.getItem('__flow_sw_unregistered')) return;
           const regs = await navigator.serviceWorker.getRegistrations();
           if(regs && regs.length){
-            // Unregister all to ensure fresh assets on next load
             await Promise.all(regs.map(r => r.unregister().catch(()=>{})));
-            // Clear caches
             if('caches' in window){
               try{ const keys = await caches.keys(); await Promise.all(keys.map(k=>caches.delete(k))); }catch(e){}
             }
-            console.info('[FLOW] Force-unregistered service workers and cleared caches. Reloading...');
+            sessionStorage.setItem('__flow_sw_unregistered','1');
+            console.info('[FLOW] Force-unregistered service workers and cleared caches. Reloading once...');
             setTimeout(()=>location.reload(), 150);
           }
         }catch(e){console.warn('[FLOW] SW unregister failed', e)}
