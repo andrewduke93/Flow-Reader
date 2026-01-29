@@ -29,6 +29,9 @@ jobs:
       - name: Build
         run: npm run build --if-present
 
+      - name: Smoke-check built distribution
+        run: npm run smoke:dist
+
       - name: Deploy to GitHub Pages (attempt with GITHUB_TOKEN)
         id: deploy_with_token
         continue-on-error: true
